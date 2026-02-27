@@ -7,7 +7,7 @@ from omnigibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 from omnigibson.object_states.object_state_base import AbsoluteObjectState, BooleanStateMixin
 from omnigibson.object_states.open_state import Open
 from omnigibson.object_states.update_state_mixin import GlobalUpdateStateMixin, UpdateStateMixin
-from omnigibson.prims.geom_prim import VisualGeomPrim
+from omnigibson.prims.geom_prim import GeomPrim
 from omnigibson.utils.constants import PrimType
 from omnigibson.utils.numpy_utils import vtarray_to_torch
 from omnigibson.utils.python_utils import classproperty
@@ -77,9 +77,6 @@ class ToggledOn(AbsoluteObjectState, BooleanStateMixin, LinkBasedStateMixin, Upd
 
     @classmethod
     def global_update(cls):
-        # Avoid circular imports
-        from omnigibson.robots.manipulation_robot import ManipulationRobot
-
         # Clear finger contact objects since it will be refreshed now
         cls._finger_contact_objs = set()
 
@@ -88,7 +85,7 @@ class ToggledOn(AbsoluteObjectState, BooleanStateMixin, LinkBasedStateMixin, Upd
             {
                 link.prim_path
                 for robot in scene.robots
-                if isinstance(robot, ManipulationRobot)
+                if robot.is_manipulation
                 for finger_links in robot.finger_links.values()
                 for link in finger_links
             }
@@ -168,9 +165,7 @@ class ToggledOn(AbsoluteObjectState, BooleanStateMixin, LinkBasedStateMixin, Upd
 
         # Create the visual geom instance referencing the generated mesh prim
         relative_prim_path = absolute_prim_path_to_scene_relative(self.obj.scene, mesh_prim_path)
-        self.visual_marker = VisualGeomPrim(
-            relative_prim_path=relative_prim_path, name=f"{self.obj.name}_visual_marker"
-        )
+        self.visual_marker = GeomPrim(relative_prim_path=relative_prim_path, name=f"{self.obj.name}_visual_marker")
         self.visual_marker.load(self.obj.scene)
         self.visual_marker.scale = self.scale
         self.visual_marker.initialize()

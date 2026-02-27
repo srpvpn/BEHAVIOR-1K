@@ -8,8 +8,6 @@ import torch as th
 import omnigibson as og
 from omnigibson.action_primitives.curobo import CuRoboMotionGenerator
 from omnigibson.macros import gm
-from omnigibson.robots.holonomic_base_robot import HolonomicBaseRobot
-from omnigibson.robots.locomotion_robot import LocomotionRobot
 
 
 def test_curobo():
@@ -61,7 +59,7 @@ def test_curobo():
 
     robot_cfgs = [
         {
-            "type": "FrankaPanda",
+            "model": "franka",
             "obs_modalities": "rgb",
             "position": [0.7, -0.55, 0.0],
             "orientation": [0, 0, 0.707, 0.707],
@@ -85,7 +83,7 @@ def test_curobo():
             },
         },
         {
-            "type": "R1",
+            "model": "r1",
             "obs_modalities": "rgb",
             "position": [0.7, -0.7, 0.056],
             "orientation": [0, 0, 0.707, 0.707],
@@ -136,7 +134,7 @@ def test_curobo():
             },
         },
         {
-            "type": "Tiago",
+            "model": "tiago",
             "obs_modalities": "rgb",
             "position": [0.7, -0.85, 0],
             "orientation": [0, 0, 0.707, 0.707],
@@ -194,7 +192,7 @@ def test_curobo():
             },
         },
         {
-            "type": "R1Pro",
+            "model": "r1pro",
             "obs_modalities": "rgb",
             "position": [0.7, -0.75, 0.056],
             "orientation": [0, 0, 0.707, 0.707],
@@ -246,6 +244,16 @@ def test_curobo():
         },
     ]
     for robot_cfg in robot_cfgs:
+        if th.cuda.is_available() and th.cuda.get_device_capability(0) == (12, 0):
+            # TODO [Wensi]: Check whether this is still true for future releases.
+            # Currently (v3.8.0), for cuda architecture 12.0 (e.g. RTX 50-series), using Default embodiment for Tiago or non-DEFAULT embodiment for R1Pro
+            #     will raise CUDA illegal memory access error during mg.warmup() due to cuRobo compatibility issues.
+            # Therefore, we remove R1Pro for testing if we detect such GPU is being used.
+            if robot_cfg["model"] == "r1pro":
+                print(
+                    f"Skipping testing for {robot_cfg['model']} on cuda architecture 12.0 GPU due to cuRobo embodiment compatibility issues."
+                )
+                continue
         cfg["robots"] = [robot_cfg]
 
         env = og.Environment(configs=cfg)
@@ -255,7 +263,7 @@ def test_curobo():
 
         floor_touching_base_link_prim_paths = (
             [os.path.join(robot.prim_path, link_name) for link_name in robot.floor_touching_base_link_names]
-            if isinstance(robot, LocomotionRobot)
+            if robot.is_locomotion
             else []
         )
 
@@ -286,14 +294,14 @@ def test_curobo():
             debug=False,
             use_cuda_graph=True,
             collision_activation_distance=0.075,  # Use larger activation distance for better reproducibility
-            use_default_embodiment_only=True,
+            use_default_embodiment_only=False,
         )
 
         # Sample values for robot
         th.manual_seed(1)
         lo, hi = robot.joint_lower_limits.clone().view(1, -1), robot.joint_upper_limits.clone().view(1, -1)
 
-        if isinstance(robot, HolonomicBaseRobot):
+        if robot.is_holonomic_base:
             lo[0, :2] = -0.1
             lo[0, 2:5] = 0.0
             lo[0, 5] = -math.pi

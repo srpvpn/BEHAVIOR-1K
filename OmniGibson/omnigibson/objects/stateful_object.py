@@ -24,7 +24,7 @@ from omnigibson.object_states.heat_source_or_sink import HeatSourceOrSink
 from omnigibson.object_states.object_state_base import REGISTERED_OBJECT_STATES
 from omnigibson.object_states.on_fire import OnFire
 from omnigibson.objects.object_base import BaseObject
-from omnigibson.prims.geom_prim import VisualGeomPrim
+from omnigibson.prims.geom_prim import GeomPrim
 from omnigibson.utils.constants import EmitterType, PrimType
 from omnigibson.utils.python_utils import classproperty, extract_class_init_kwargs_from_dict
 from omnigibson.utils.ui_utils import create_module_logger
@@ -110,7 +110,7 @@ class StatefulObject(BaseObject):
                 the object state instance constructor.
             include_default_states (bool): whether to include the default object states from @get_default_states
             kwargs (dict): Additional keyword arguments that are used for other super() calls from subclasses, allowing
-                for flexible compositions of various object subclasses (e.g.: Robot is USDObject + ControllableObject).
+                for flexible compositions of various object subclasses (e.g.: Robot is USDObject).
         """
         # Values that will be filled later
         self._states = None
@@ -181,9 +181,9 @@ class StatefulObject(BaseObject):
             state (ObjectStateBase): Object state instance to add to this object
         """
         assert self._states is not None, "Cannot add state since states have not been initialized yet!"
-        assert state.__class__ not in self._states, (
-            f"State {state.__class__.__name__} " f"has already been added to this object!"
-        )
+        assert (
+            state.__class__ not in self._states
+        ), f"State {state.__class__.__name__} has already been added to this object!"
         self._states[state.__class__] = state
 
     @property
@@ -348,7 +348,7 @@ class StatefulObject(BaseObject):
         dummy_mesh_path = f"{link.prim_path}/emitter"
         lazy.pxr.UsdGeom.Sphere.Define(og.sim.stage, dummy_mesh_path)
         relative_dummy_mesh_path = absolute_prim_path_to_scene_relative(self._scene, dummy_mesh_path)
-        mesh = VisualGeomPrim(relative_prim_path=relative_dummy_mesh_path, name=f"{self.name}_emitter")
+        mesh = GeomPrim(relative_prim_path=relative_dummy_mesh_path, name=f"{self.name}_emitter")
         mesh.load(self._scene)
         mesh.visible = False
 

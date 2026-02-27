@@ -7,7 +7,7 @@ import time
 import omnigibson as og
 import omnigibson.lazy as lazy
 from omnigibson.macros import gm
-from omnigibson.prims import VisualGeomPrim
+from omnigibson.prims import GeomPrim
 from omnigibson.prims.material_prim import OmniPBRMaterialPrim
 from omnigibson.utils.asset_utils import get_dataset_path
 from omnigibson.utils.usd_utils import create_primitive_mesh, absolute_prim_path_to_scene_relative
@@ -15,8 +15,6 @@ from omnigibson.utils.ui_utils import dock_window
 from omnigibson.utils import transform_utils as T
 from omnigibson.sensors import VisionSensor
 from omnigibson.objects.usd_object import USDObject
-from omnigibson.robots.r1 import R1
-from omnigibson.robots.r1pro import R1Pro
 from bddl.activity import Conditions
 
 from gello.robots.sim_robot.og_teleop_cfg import *
@@ -24,7 +22,6 @@ from gello.robots.sim_robot.og_teleop_cfg import *
 
 from bddl.activity import Conditions
 from bddl.object_taxonomy import ObjectTaxonomy
-import json
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -276,7 +273,7 @@ def setup_cameras(robot, external_sensors, resolution):
     og.sim.viewer_camera.image_width = resolution[1]
 
     # Adjust wrist cameras for R1
-    if isinstance(robot, R1) and not isinstance(robot, R1Pro):
+    if robot.model in ("r1", "r1pro"):
         left_wrist_camera_prim = lazy.isaacsim.core.utils.prims.get_prim_at_path(
             prim_path=f"{robot.links[WRIST_CAMERA_LINK_NAME[robot.__class__.__name__]['left']].prim_path}/Camera"
         )
@@ -299,7 +296,7 @@ def setup_cameras(robot, external_sensors, resolution):
         ) # expects (w, x, y, z)
     
     # Adjust head camera for R1Pro (TODO: fix this in assets)
-    if isinstance(robot, R1Pro):
+    if robot.model == "r1pro":
         head_camera_prim = lazy.isaacsim.core.utils.prims.get_prim_at_path(prim_path=f"{robot.links[HEAD_CAMERA_LINK_NAME[robot.__class__.__name__]].prim_path}/Camera")
         head_camera_prim.GetAttribute("xformOp:translate").Set(
             lazy.pxr.Gf.Vec3d(*R1PRO_HEAD_CAMERA_LOCAL_POS.tolist())
@@ -363,7 +360,7 @@ def setup_camera_blinking_visualizers(camera_paths, scene):
                 "Cube",
                 extents=[2.0, 1.0, 0.01]
             )
-            vis_geom = VisualGeomPrim(
+            vis_geom = GeomPrim(
                 relative_prim_path=absolute_prim_path_to_scene_relative(scene, vis_prim_path),
                 name=f"{cam_path}:blink_vis_sphere"
             )
@@ -494,7 +491,7 @@ def setup_robot_visualizers(robot, scene):
                 "Cylinder",
                 extents=1.0
             )
-            vis_geom = VisualGeomPrim(
+            vis_geom = GeomPrim(
                 relative_prim_path=absolute_prim_path_to_scene_relative(scene, vis_prim_path),
                 name=f"{robot.name}:arm_{arm}:vis_cylinder_{axis}"
             )
@@ -519,7 +516,7 @@ def setup_robot_visualizers(robot, scene):
                 "Sphere",
                 extents=1.0
             )
-            vis_geom = VisualGeomPrim(
+            vis_geom = GeomPrim(
                 relative_prim_path=absolute_prim_path_to_scene_relative(scene, vis_prim_path),
                 name=f"{robot.name}:arm_{arm}:vis_sphere"
             )
@@ -543,7 +540,7 @@ def setup_robot_visualizers(robot, scene):
                 "Cylinder",
                 extents=1.0
             )
-            vis_geom = VisualGeomPrim(
+            vis_geom = GeomPrim(
                 relative_prim_path=absolute_prim_path_to_scene_relative(scene, vis_prim_path),
                 name=f"{robot.name}:arm_{arm}:vis_vertical"
             )
@@ -596,7 +593,7 @@ def setup_robot_visualizers(robot, scene):
                 "Cylinder",
                 extents=1.0
             )
-            edge_geom = VisualGeomPrim(
+            edge_geom = GeomPrim(
                 relative_prim_path=absolute_prim_path_to_scene_relative(scene, edge_prim_path),
                 name=f"{robot.name}:square_edge_{name}"
             )
@@ -850,7 +847,7 @@ def setup_object_beacons(task_relevant_objects, scene):
             "Cylinder",
             extents=1.0
         )
-        beacon = VisualGeomPrim(
+        beacon = GeomPrim(
             relative_prim_path=absolute_prim_path_to_scene_relative(scene, vis_prim_path),
             name=f"{obj.name}:beacon_cylinder"
         )
@@ -907,7 +904,7 @@ def setup_task_visualizers(task_relevant_objects, scene):
                         "Cylinder",
                         extents=1.0
                     )
-                    visualizer = VisualGeomPrim(
+                    visualizer = GeomPrim(
                         relative_prim_path=absolute_prim_path_to_scene_relative(scene, vis_prim_path),
                         name=f"{obj.name}:attachment_frame_{axis}"
                     )
@@ -1023,9 +1020,9 @@ def optimize_sim_settings(vr_mode=False):
     settings.set("/app/vsync", True)
 
 def setup_ghost_robot_info(ghost, robot):
-    if isinstance(robot, R1Pro):
+    if robot.model == "r1pro":
         robot_arm_dof = 7
-    elif isinstance(robot, R1):
+    elif robot.model == "r1":
         robot_arm_dof = 6
     else:
         raise ValueError(f"Unknown robot type: {type(robot)}")
