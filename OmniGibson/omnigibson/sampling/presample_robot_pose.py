@@ -161,6 +161,7 @@ def sample_robot_poses(env, existing_r1pro_pose: Dict) -> Dict[str, List[Dict]]:
             print(f"    Found reference object for robot positioning: {reference_object_name}")
             break
 
+    assert reference_object_name is not None, "No reference object found in initial conditions for robot pose sampling"
     reference_object = env.scene.object_registry("name", reference_object_name)
 
     for robot in env.robots:
@@ -333,7 +334,7 @@ def process_task(task_info: Dict):
                 # Remove the agent entry
                 del tro_data[key]
                 break
-        if flag:
+        if not flag:
             continue
         # TODO: Reset environment to this TRO instance state
         for bddl_name, obj_state in tro_torch_state.items():
